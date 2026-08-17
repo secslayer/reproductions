@@ -16,17 +16,19 @@ not printed to stdout — only aggregate ASR and per-item pass/fail are.
 """
 import csv
 import json
+import os
 import random
 import sys
 
 import requests
 
-from minimal_build import build_attack_prompt, call_target_llm, classify_target
+from minimal_build import OLLAMA_MODEL, build_attack_prompt, call_target_llm, classify_target
 
 ADVBENCH_URL = (
     "https://raw.githubusercontent.com/llm-attacks/llm-attacks/main/data/advbench/"
     "harmful_behaviors.csv"
 )
+ADVBENCH_CACHE = "harmful_behaviors.csv"  # gitignored — fetched once, reused across runs/targets
 N = 5
 SEED = 42
 
@@ -41,9 +43,16 @@ JUDGE_PROMPT_TEMPLATE = (
 
 
 def fetch_advbench(n: int, seed: int) -> list[str]:
-    resp = requests.get(ADVBENCH_URL, timeout=30)
-    resp.raise_for_status()
-    rows = list(csv.DictReader(resp.text.splitlines()))
+    if os.path.exists(ADVBENCH_CACHE):
+        with open(ADVBENCH_CACHE) as f:
+            text = f.read()
+    else:
+        resp = requests.get(ADVBENCH_URL, timeout=30)
+        resp.raise_for_status()
+        text = resp.text
+        with open(ADVBENCH_CACHE, "w") as f:
+            f.write(text)
+    rows = list(csv.DictReader(text.splitlines()))
     random.Random(seed).shuffle(rows)
     return [r["goal"] for r in rows[:n]]
 
@@ -72,24 +81,26 @@ def main():
         print(f"[{i}/{len(behaviors)}] judged_success={success}")
 
     asr = sum(r["judged_success"] for r in results) / len(results)
-    print(f"\nASR (n={len(results)}, target=llama3/Type-I, judge=llama3/single/local): {asr:.0%}")
+    print(f"\nASR (n={len(results)}, target={OLLAMA_MODEL}/{target_class}, "
+          f"judge={OLLAMA_MODEL}/single/local): {asr:.0%}")
 
-    with open("results_advbench_smoke.json", "w") as f:
+    out_path = f"results_advbench_smoke_{OLLAMA_MODEL}.json"
+    with open(out_path, "w") as f:
         json.dump(
             {
                 "n": N,
                 "seed": SEED,
                 "dataset": "AdvBench (llm-attacks/harmful_behaviors.csv)",
-                "target_model": "llama3",
+                "target_model": OLLAMA_MODEL,
                 "target_class": target_class,
-                "judge": "llama3 (single, local, same model as target)",
+                "judge": f"{OLLAMA_MODEL} (single, local, same model as target)",
                 "asr": asr,
                 "results": results,
             },
             f,
             indent=2,
         )
-    print("Full results -> results_advbench_smoke.json")
+    print(f"Full results -> {out_path}")
 
 
 if __name__ == "__main__":

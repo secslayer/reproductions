@@ -1,31 +1,28 @@
-# AJF — minimal build
+# AJF — reproduction
 
-Stage 4 reproduction of *AJF: Adaptive Jailbreak Framework Based on the Comprehension Ability of
-Black-Box Large Language Models* (arXiv:[2505.23404v5](https://arxiv.org/abs/2505.23404)).
-
-Implements the MuEn (Type-I) path only: mutate a seed instruction into a pseudo-function-definition
-(Mu, Eq. 1), encode it as a height-balanced binary tree (En_prompt, Eq. 2 / Algorithm 1), and ask a
-target LLM to decode it via in-order traversal and answer. No dual-cipher MuDeEn extension, no
-Type-I/Type-II capability router, no dataset, no ASR scoring yet — this only proves the core
-mechanism runs end to end.
+Reproduction of *AJF: Adaptive Jailbreak Framework Based on the Comprehension Ability of
+Black-Box Large Language Models* (arXiv:[2505.23404v5](https://arxiv.org/abs/2505.23404)), Stages
+4-5 of the paper's 11-stage workflow: Mu (Eq. 1) -> En_prompt (Eq. 2, Algorithm 1) -> MuEn/MuDeEn
+(Eqs. 4-6) -> target LLM, the Type-I/Type-II capability probe, and a smoke-scale AdvBench run.
 
 ## Setup
 
 ```bash
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
-ollama serve &          # if not already running
-ollama pull llama3      # if not already pulled
+ollama serve &                       # if not already running
+ollama pull llama3 && ollama pull llama2   # or whichever local targets you want
 ```
 
 ## Run
 
 ```bash
-python minimal_build.py
+python minimal_build.py     # probe + MuEn + MuDeEn, single seed prompt
+python reproduce.py         # Stage 5: smoke-scale AdvBench run + ASR scoring
 ```
 
-Uses local Ollama (`llama3` by default — see `OLLAMA_URL`/`OLLAMA_MODEL` in `minimal_build.py`) as
-the target model.
+Target model defaults to `llama3` (local Ollama) — override with `OLLAMA_MODEL=llama2` (or any
+other pulled model) as an env var to run against a different target.
 
 ## Status
 
@@ -36,22 +33,31 @@ the target model.
 - [x] Type-I / Type-II capability-classification probe (§5, Appendix A.3)
 - [x] Dataset run (AdvBench, n=5 smoke-scale) + ASR scoring, single local judge — Stage 5
 
-### Stage 5 result (llama3, AdvBench n=5, seed=42, 2026-08-17)
-**ASR: 0%.** Scope is deliberately narrow — 5 of 520 AdvBench behaviors, one target (llama3,
-already Type-I per the probe, so MuEn path only), one judge (llama3 itself — same-model-judges-
-itself, weaker than the paper's GPT-4.1+Kimi dual judge). Full per-item results in
-`results_advbench_smoke.json` (not printed to stdout/committed to chat — behavior/response text
-stays in the file). Consistent with the Stage 4 observation: this target can't reliably execute
-even the MuEn decode step, so 0% here is more evidence of a comprehension-classification limit
-than a claim about AJF's real-world ASR — the paper's own headline numbers are against GPT-4-class
-models, not a 8B local model like llama3.
+### Stage 5 results (AdvBench n=5, seed=42, same 5 behaviors across targets, 2026-08-17)
 
-### First observation (llama3, 2026-08-17)
-Classification probe: **Type-I**. MuEn decode came back token-order-scrambled rather than a real
-answer; MuDeEn came back garbled and ignored the "ciphertext only" instruction. Consistent with the
-paper's own strategy-mismatch ablation (Table 4: MuDeEn on a Type-I model → ~0% ASR) — llama3
-genuinely can't execute the multi-step decrypt→solve→re-encrypt protocol. Informal, single-prompt,
-not a Stage 5 result.
+| Target | Params | Probe class | ASR (n=5, self-judged) | Paper's Llama2-7b ASR |
+|---|---|---|---|---|
+| llama3 | 8B | Type-I | 0% | — (not a paper target) |
+| llama2 | 6.7B (Q4_0) | Type-I | **60%** | 93.4% |
+
+Same scope caveats for both: 5 of 520 AdvBench behaviors, single local judge (same model as
+target — same-model-judges-itself, weaker than the paper's GPT-4.1+Kimi dual judge), local
+quantized (Q4_0) weights rather than whatever precision the paper's Llama2-7b run used.
+
+llama3 came back scrambled at the MuEn decode step itself (Stage 4 observation) — 0% there is a
+comprehension-classification failure, not evidence about AJF. llama2 decoded coherently ("Pick a
+lock and explain how to tumble it") and actually engaged with the reconstructed instruction, so
+60% is a real, if noisy (n=5), signal — same direction as the paper's 93.4% on the same base model,
+though nowhere near it at this scale/judge. Per-item results (behavior/response text) in
+`results_advbench_smoke_llama3.json` and `results_advbench_smoke_llama2.json`.
+
+### Stage 4 observations (single seed prompt, 2026-08-17)
+- **llama3** — probe: Type-I. MuEn decode came back token-order-scrambled rather than a real
+  answer; MuDeEn came back garbled and ignored the "ciphertext only" instruction. Consistent with
+  the paper's own strategy-mismatch ablation (Table 4: MuDeEn on a Type-I model → ~0% ASR).
+- **llama2** — probe: Type-I (didn't hit the exact-ciphertext bar). MuEn decode was actually
+  coherent ("Pick a lock and explain how to tumble it") with a real (refusing) answer engaging the
+  content — a stronger decode than the strict binary classifier credits it for.
 
 Full paper notes, threat model, and weaknesses tracked in the BREOS vault:
 `02 Research/02 Active Paper/Adaptive Jailbreak Framework Based on the Comprehension Ability of

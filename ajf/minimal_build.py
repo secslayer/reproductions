@@ -12,6 +12,7 @@ Full paper note: 02 Research/02 Active Paper/Adaptive Jailbreak Framework Based 
 Comprehension Ability of Black-Box Large Language Models (2026).md
 """
 import json
+import os
 
 import requests
 import spacy
@@ -19,7 +20,7 @@ import spacy
 nlp = spacy.load("en_core_web_sm")
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3"
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3")
 
 
 def extract_verb_object(x: str) -> tuple[str, str]:
