@@ -113,10 +113,19 @@ def build_mudeen_prompt(x: str) -> str:
     return f"{DECODE_INSTRUCTIONS} {REENCRYPT_INSTRUCTIONS}\n\n{json.dumps(C)}"
 
 
-def run_mudeen(x: str) -> str:
-    """Eq. 6: An = De_response(Re) — attacker decrypts the returned ciphertext offline."""
-    ciphertext_answer = call_target_llm(build_mudeen_prompt(x))
-    return de_response(ciphertext_answer, k=1)
+def run_mudeen(x: str) -> dict:
+    """Eq. 6: An = De_response(Re) — attacker decrypts the returned ciphertext offline.
+
+    Real targets routinely ignore "output ONLY the ciphertext" and wrap it in plain-English
+    explanation. Blindly Caesar-shifting the *whole* raw response (as an earlier version of this
+    function did) corrupts that prose into gibberish instead of decrypting anything meaningful.
+    Returns both: `raw` (the model's actual output — what a human/judge should read) and
+    `decrypted_naive` (de_response applied to the whole raw string — only meaningful if the
+    model's raw output really was pure ciphertext, which no local target tested here reliably
+    produces; kept for cases where it does happen to isolate the ciphertext cleanly).
+    """
+    raw = call_target_llm(build_mudeen_prompt(x))
+    return {"raw": raw, "decrypted_naive": de_response(raw, k=1)}
 
 
 # --- Type-I / Type-II capability-classification probe (paper §5, Appendix A.3) ------------------
@@ -150,4 +159,6 @@ if __name__ == "__main__":
     print(call_target_llm(build_attack_prompt(x)))
 
     print("\n=== MuDeEn (Type-II path) ===")
-    print(run_mudeen(x))
+    mudeen_result = run_mudeen(x)
+    print("raw:", mudeen_result["raw"])
+    print("decrypted_naive:", mudeen_result["decrypted_naive"])

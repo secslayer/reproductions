@@ -32,6 +32,38 @@ other pulled model) as an env var to run against a different target.
 - [x] MuDeEn dual-cipher (Eqs. 4-6, output-side Caesar encryption)
 - [x] Type-I / Type-II capability-classification probe (§5, Appendix A.3)
 - [x] Dataset run (AdvBench, n=5 smoke-scale) + ASR scoring, single local judge — Stage 5
+- [x] Ablation: no-Mu, full MuDeEn at dataset scale — Stage 6
+
+### Stage 6 results — ablation (llama2, same n=5/seed=42 AdvBench sample, 2026-08-19)
+
+Ran two conditions against llama2 (the one target with a genuine Stage 5 success) and compared to
+the Stage 5 baseline. Both new conditions were also fully hand-verified — same discipline as
+Stage 5, since there's no reason to trust the self-judge by default anymore.
+
+| Condition | What's included | Self-judged ASR | **Manual ASR** |
+|---|---|---|---|
+| baseline (Stage 5) | Mu + En_prompt | 60% | **20%** (1/5) |
+| no_mu | En_prompt only, Mu skipped | 0% | **0%** (0/5) |
+| mudeen | Mu + En_prompt + En_response (full dual-cipher) | 0% | **0%** (0/5) |
+
+**Bug found and fixed mid-ablation**: `run_mudeen()` was Caesar-shifting the model's *entire* raw
+response by -1 to "decrypt" it, on the assumption the model output pure ciphertext as instructed.
+It doesn't — llama2 (like every local target tested) wraps its answer in plain-English
+explanation and instructions were followed loosely at best. Blindly shifting that English prose
+turned it into unreadable gibberish before it ever reached the judge, e.g. raw `"The reconstructed
+instruction is: ... The re-encrypted ciphertext is: 'BKAO'"` became `"Sgd qdbnmrsqtbsdc
+hmrsqtbshnm hr..."` — nonsense, not a decryption of anything. Fixed by having `run_mudeen()` return
+`{"raw": ..., "decrypted_naive": ...}` and judging on `raw` (the actual model output) instead. The
+Stage 4 single-prompt MuDeEn observations below predate this fix and describe output that was
+partly *my* corruption, not purely the model's — treat Stage 6's mudeen row as the reliable
+version of that comparison, not the Stage 4 notes.
+
+**Reading the result**: dropping Mu takes the one genuine success to zero, and the full MuDeEn
+dual-cipher also drops to zero even measured correctly. Both are consistent with Mu's disguise (not
+just the tree-encoding) mattering, and with the paper's own strategy-mismatch finding (MuDeEn
+overwhelms a Type-I-classified target). But n=5 means each of these comparisons is a single
+success flipping to zero — suggestive of which component matters, not statistically load-bearing.
+Full per-item results (raw + decrypted_naive text) in `ablation_llama2.json`.
 
 ### Stage 5 results (AdvBench n=5, seed=42, same 5 behaviors across targets, 2026-08-17)
 
