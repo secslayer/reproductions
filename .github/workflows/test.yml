@@ -1,0 +1,20 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ajf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - working-directory: ajf
+        run: |
+          pip install -r requirements-dev.txt
+          python -m spacy download en_core_web_sm
+      - working-directory: ajf
+        run: python -m pytest test_ajf.py -v

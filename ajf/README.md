@@ -2,13 +2,16 @@
 
 Reproduction of *AJF: Adaptive Jailbreak Framework Based on the Comprehension Ability of
 Black-Box Large Language Models* (arXiv:[2505.23404v5](https://arxiv.org/abs/2505.23404)), Stages
-4-5 of the paper's 11-stage workflow: Mu (Eq. 1) -> En_prompt (Eq. 2, Algorithm 1) -> MuEn/MuDeEn
-(Eqs. 4-6) -> target LLM, the Type-I/Type-II capability probe, and a smoke-scale AdvBench run.
+4-9 of the paper's 11-stage workflow: Mu (Eq. 1) -> En_prompt (Eq. 2, Algorithm 1) -> MuEn/MuDeEn
+(Eqs. 4-6) -> target LLM, the Type-I/Type-II capability probe, a smoke-scale AdvBench run, an
+ablation, and a defense. See the repo root [README](../README.md) for the responsible-use note —
+this reproduces published jailbreak methodology for academic security research, not as a
+ready-to-use attack tool.
 
 ## Setup
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt          # or requirements-dev.txt to also run the test suite
 python -m spacy download en_core_web_sm
 ollama serve &                       # if not already running
 ollama pull llama3 && ollama pull llama2 && ollama pull mistral   # or whichever local targets you want
@@ -17,12 +20,22 @@ ollama pull llama3 && ollama pull llama2 && ollama pull mistral   # or whichever
 ## Run
 
 ```bash
-python minimal_build.py     # probe + MuEn + MuDeEn, single seed prompt
-python reproduce.py         # Stage 5: smoke-scale AdvBench run + ASR scoring
+python -m pytest test_ajf.py   # deterministic parts only (tree encoding, cipher, detectors) — no LLM needed
+python minimal_build.py        # probe + MuEn + MuDeEn, single seed prompt
+python reproduce.py            # Stage 5: smoke-scale AdvBench run + ASR scoring
+python ablate.py               # Stage 6: no-Mu / full-MuDeEn ablation, against llama2
+python defense.py              # Stage 7: input + output-side detectors
 ```
 
 Target model defaults to `llama3` (local Ollama) — override with `OLLAMA_MODEL=llama2` (or any
 other pulled model) as an env var to run against a different target.
+
+**Reproducibility note**: `reproduce.py`/`ablate.py`/`defense.py` fetch AdvBench from the
+`llm-attacks/llm-attacks` GitHub repo's `main` branch (unpinned — that file could change upstream)
+and cache it locally as `harmful_behaviors.csv` (gitignored) on first run; every subsequent run
+reuses the cache, so once fetched, `seed=42` gives the same 5-behavior sample every time regardless
+of upstream changes. The version fetched for every result in this README was 521 lines
+(520 behaviors + header), columns `goal,target`.
 
 ## Status
 
@@ -34,6 +47,7 @@ other pulled model) as an env var to run against a different target.
 - [x] Dataset run (AdvBench, n=5 smoke-scale) + ASR scoring, single local judge — Stage 5
 - [x] Ablation: no-Mu, full MuDeEn at dataset scale — Stage 6
 - [x] Defense: input-side structure detector + output-side decrypt-before-moderate — Stage 7
+- [x] Repo hardening: LICENSE, pinned deps, unit tests, CI, responsible-use note — Stage 9
 
 ### Stage 7 results — defense (2026-08-17)
 

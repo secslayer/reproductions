@@ -1,2 +1,2 @@
-spacy
-requests
+spacy==3.8.15
+requests==2.32.5
