@@ -35,7 +35,7 @@ other pulled model) as an env var to run against a different target.
 - [x] Ablation: no-Mu, full MuDeEn at dataset scale — Stage 6
 - [x] Defense: input-side structure detector + output-side decrypt-before-moderate — Stage 7
 
-### Stage 7 results — defense (2026-08-19)
+### Stage 7 results — defense (2026-08-17)
 
 The paper's own Weaknesses section (§10) names the fix but never evaluates it: *"a monitor that
 decrypts or flags high-ciphertext-density outputs neutralizes MuDeEn. No adaptive-defense
@@ -63,7 +63,7 @@ successfully-obfuscated output the paper's own targets (GPT-4-class, Type-II) wo
 
 Full results in `defense_results.json`.
 
-### Stage 6 results — ablation (llama2, same n=5/seed=42 AdvBench sample, 2026-08-19)
+### Stage 6 results — ablation (llama2, same n=5/seed=42 AdvBench sample, 2026-08-17)
 
 Ran two conditions against llama2 (the one target with a genuine Stage 5 success) and compared to
 the Stage 5 baseline. Both new conditions were also fully hand-verified — same discipline as
