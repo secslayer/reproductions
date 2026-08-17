@@ -34,7 +34,17 @@ the target model.
 - [x] One target, one seed prompt, decoded and answered end to end
 - [x] MuDeEn dual-cipher (Eqs. 4-6, output-side Caesar encryption)
 - [x] Type-I / Type-II capability-classification probe (§5, Appendix A.3)
-- [ ] Dataset run (AdvBench / MaliciousInstruct / ShadowAlignment) + ASR scoring — Stage 5
+- [x] Dataset run (AdvBench, n=5 smoke-scale) + ASR scoring, single local judge — Stage 5
+
+### Stage 5 result (llama3, AdvBench n=5, seed=42, 2026-08-17)
+**ASR: 0%.** Scope is deliberately narrow — 5 of 520 AdvBench behaviors, one target (llama3,
+already Type-I per the probe, so MuEn path only), one judge (llama3 itself — same-model-judges-
+itself, weaker than the paper's GPT-4.1+Kimi dual judge). Full per-item results in
+`results_advbench_smoke.json` (not printed to stdout/committed to chat — behavior/response text
+stays in the file). Consistent with the Stage 4 observation: this target can't reliably execute
+even the MuEn decode step, so 0% here is more evidence of a comprehension-classification limit
+than a claim about AJF's real-world ASR — the paper's own headline numbers are against GPT-4-class
+models, not a 8B local model like llama3.
 
 ### First observation (llama3, 2026-08-17)
 Classification probe: **Type-I**. MuEn decode came back token-order-scrambled rather than a real
