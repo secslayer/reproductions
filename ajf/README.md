@@ -32,9 +32,16 @@ the target model.
 - [x] Mu (Eq. 1) — spaCy-based verb/object extraction, wrapped as pseudo-function-definition
 - [x] En_prompt (Eq. 2, Algorithm 1) — balanced binary-tree token encoding
 - [x] One target, one seed prompt, decoded and answered end to end
-- [ ] MuDeEn dual-cipher (output-side Caesar encryption)
-- [ ] Type-I / Type-II capability-classification probe
+- [x] MuDeEn dual-cipher (Eqs. 4-6, output-side Caesar encryption)
+- [x] Type-I / Type-II capability-classification probe (§5, Appendix A.3)
 - [ ] Dataset run (AdvBench / MaliciousInstruct / ShadowAlignment) + ASR scoring — Stage 5
+
+### First observation (llama3, 2026-08-17)
+Classification probe: **Type-I**. MuEn decode came back token-order-scrambled rather than a real
+answer; MuDeEn came back garbled and ignored the "ciphertext only" instruction. Consistent with the
+paper's own strategy-mismatch ablation (Table 4: MuDeEn on a Type-I model → ~0% ASR) — llama3
+genuinely can't execute the multi-step decrypt→solve→re-encrypt protocol. Informal, single-prompt,
+not a Stage 5 result.
 
 Full paper notes, threat model, and weaknesses tracked in the BREOS vault:
 `02 Research/02 Active Paper/Adaptive Jailbreak Framework Based on the Comprehension Ability of
