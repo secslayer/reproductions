@@ -1,0 +1,9 @@
+{
+  "input_side": {
+    "caught_muen": 5,
+    "caught_mudeen": 5,
+    "n": 5
+  },
+  "output_side_flagged": 0,
+  "output_side_n": 5
+}

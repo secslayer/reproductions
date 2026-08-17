@@ -33,6 +33,35 @@ other pulled model) as an env var to run against a different target.
 - [x] Type-I / Type-II capability-classification probe (§5, Appendix A.3)
 - [x] Dataset run (AdvBench, n=5 smoke-scale) + ASR scoring, single local judge — Stage 5
 - [x] Ablation: no-Mu, full MuDeEn at dataset scale — Stage 6
+- [x] Defense: input-side structure detector + output-side decrypt-before-moderate — Stage 7
+
+### Stage 7 results — defense (2026-08-19)
+
+The paper's own Weaknesses section (§10) names the fix but never evaluates it: *"a monitor that
+decrypts or flags high-ciphertext-density outputs neutralizes MuDeEn. No adaptive-defense
+evaluation is reported."* Implemented and tested both halves against every prompt/response this
+reproduction has actually generated (`defense.py`).
+
+**Input-side** (does the prompt contain the En_prompt tree-JSON structure at all?): a single regex
+against `"value": ..., "left":` catches **5/5 MuEn and 5/5 MuDeEn prompts** from the Stage 5/6
+sample — trivial, as the paper's own critique predicts, since Algorithm 1's ciphertext has a fixed,
+recognizable shape with zero semantic understanding required.
+
+**Output-side** (brute-force all 26 Caesar shifts, flag if a non-zero shift decodes to
+meaningfully more fluent English than shift=0 — "decrypt-before-moderate"): **0/5 flagged** on
+Stage 6's real mudeen responses. That's *not* a defense failure — it's because none of those
+responses were actually obfuscated in the first place (Stage 6 already found 0% manual ASR there;
+the model never got far enough to produce a genuinely cipher-hidden payload). Testing the decoder
+against non-obfuscated text only proves it doesn't false-positive on ordinary English, which it
+correctly doesn't. **Validated separately** against a synthetic case — manually Caesar-shifted a
+plaintext string myself (bypassing the LLM) to construct what a genuinely successful MuDeEn
+response would look like: the detector correctly identified shift=1 and recovered the exact
+plaintext, flagged=True. So the mechanism works; this reproduction just never produced a real
+attack success for it to catch, which is itself consistent with everything found in Stages 4-6 —
+these local, weak (Type-I) targets can't execute the protocol well enough to generate the kind of
+successfully-obfuscated output the paper's own targets (GPT-4-class, Type-II) would.
+
+Full results in `defense_results.json`.
 
 ### Stage 6 results — ablation (llama2, same n=5/seed=42 AdvBench sample, 2026-08-19)
 
